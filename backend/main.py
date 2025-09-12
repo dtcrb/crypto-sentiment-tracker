@@ -13,10 +13,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+origins = [
+    "https://calm-tree-01e0e191e.2.azurestaticapps.net",  # your SWA URL
+    "http://localhost:5173",  # local dev
+]
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this more restrictively in production
+    allow_origins=origins,  # Configure this more restrictively in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
