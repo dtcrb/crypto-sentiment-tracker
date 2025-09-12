@@ -1,7 +1,5 @@
-'use client';
-
 import { useState } from 'react';
-import { Coin, SortOption } from '@/types/coin';
+import { Coin, SortOption } from '../types/coin';
 
 interface CoinTableProps {
   coins: Coin[];

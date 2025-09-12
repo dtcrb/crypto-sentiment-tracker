@@ -1,11 +1,9 @@
-'use client';
-
 import { useEffect, useState } from 'react';
-import CoinTable from '@/components/CoinTable';
-import { fetchCoins } from '@/lib/api';
-import { Coin } from '@/types/coin';
+import CoinTable from './components/CoinTable';
+import { fetchCoins } from './lib/api';
+import { Coin } from './types/coin';
 
-export default function Home() {
+function App() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,3 +110,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default App;
