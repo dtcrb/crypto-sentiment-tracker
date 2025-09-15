@@ -15,7 +15,9 @@ app = FastAPI(
 
 origins = [
     "https://calm-tree-01e0e191e.2.azurestaticapps.net",  # your SWA URL
-    "http://localhost:5173",  # local dev
+    "http://localhost:3000",  # local dev
+    "http://localhost:3001",  # local dev
+    "http://localhost:3002",  # local dev
 ]
 
 # Configure CORS

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Coin, SortOption } from '../types/coin';
+import { Coin, SortColumn, SortState } from '../types/coin';
 
 interface CoinTableProps {
   coins: Coin[];
@@ -7,7 +7,10 @@ interface CoinTableProps {
 }
 
 export default function CoinTable({ coins, loading = false }: CoinTableProps) {
-  const [sortBy, setSortBy] = useState<SortOption>('sentiment');
+  const [sortState, setSortState] = useState<SortState>({
+    column: 'sentiment',
+    direction: 'desc'
+  });
 
   const getSentimentColor = (sentimentScore: number | null, noMentions: boolean) => {
     if (noMentions || sentimentScore === null) {
@@ -68,26 +71,68 @@ export default function CoinTable({ coins, loading = false }: CoinTableProps) {
     }
   };
 
+  const handleSort = (column: SortColumn) => {
+    setSortState(prevState => ({
+      column,
+      direction: prevState.column === column && prevState.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
   const sortedCoins = [...coins].sort((a, b) => {
-    if (sortBy === 'sentiment') {
-      // Sort by sentiment score (highest first), then by market cap
-      const aScore = a.no_mentions || a.sentiment_score === null ? -999 : a.sentiment_score;
-      const bScore = b.no_mentions || b.sentiment_score === null ? -999 : b.sentiment_score;
-      
-      if (aScore !== bScore) {
-        return bScore - aScore;
-      }
-      
-      // If sentiment scores are equal, sort by market cap
-      const aMarketCap = a.market_cap || 0;
-      const bMarketCap = b.market_cap || 0;
-      return bMarketCap - aMarketCap;
-    } else {
-      // Sort by market cap (highest first)
+    // Check if coins have no data (no mentions or null sentiment)
+    const aHasNoData = a.no_mentions || a.sentiment_score === null;
+    const bHasNoData = b.no_mentions || b.sentiment_score === null;
+
+    // Always place coins without data at the bottom
+    if (aHasNoData && !bHasNoData) {
+      return 1; // a goes after b
+    }
+    if (!aHasNoData && bHasNoData) {
+      return -1; // a goes before b
+    }
+    if (aHasNoData && bHasNoData) {
+      // If both have no data, sort by market cap (highest first) as secondary sort
       const aMarketCap = a.market_cap || 0;
       const bMarketCap = b.market_cap || 0;
       return bMarketCap - aMarketCap;
     }
+
+    // Both coins have data, proceed with normal sorting
+    let aValue: number | string;
+    let bValue: number | string;
+
+    switch (sortState.column) {
+      case 'sentiment':
+        aValue = a.sentiment_score!; // We know it's not null due to check above
+        bValue = b.sentiment_score!;
+        break;
+      case 'market_cap':
+        aValue = a.market_cap || 0;
+        bValue = b.market_cap || 0;
+        break;
+      case 'mentions':
+        aValue = a.mentions_count;
+        bValue = b.mentions_count;
+        break;
+      case 'price':
+        aValue = a.price_usd || 0;
+        bValue = b.price_usd || 0;
+        break;
+      case 'name':
+        aValue = a.name.toLowerCase();
+        bValue = b.name.toLowerCase();
+        break;
+      default:
+        return 0;
+    }
+
+    if (aValue < bValue) {
+      return sortState.direction === 'asc' ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return sortState.direction === 'asc' ? 1 : -1;
+    }
+    return 0;
   });
 
   if (loading) {
@@ -101,59 +146,76 @@ export default function CoinTable({ coins, loading = false }: CoinTableProps) {
 
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      {/* Header with sort controls */}
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Crypto Sentiment Tracker
-          </h2>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Sort by:</span>
-            <div className="flex bg-white rounded-lg border border-gray-300 overflow-hidden">
-              <button
-                onClick={() => setSortBy('sentiment')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  sortBy === 'sentiment'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Sentiment
-              </button>
-              <button
-                onClick={() => setSortBy('market_cap')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  sortBy === 'market_cap'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Market Cap
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Coin
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('name')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Coin</span>
+                  {sortState.column === 'name' && (
+                    <span className="text-blue-600">
+                      {sortState.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Sentiment Score
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('sentiment')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Sentiment Score</span>
+                  {sortState.column === 'sentiment' && (
+                    <span className="text-blue-600">
+                      {sortState.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mentions
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('mentions')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Mentions</span>
+                  {sortState.column === 'mentions' && (
+                    <span className="text-blue-600">
+                      {sortState.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Market Cap
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('market_cap')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Market Cap</span>
+                  {sortState.column === 'market_cap' && (
+                    <span className="text-blue-600">
+                      {sortState.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Price (USD)
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => handleSort('price')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Price (USD)</span>
+                  {sortState.column === 'price' && (
+                    <span className="text-blue-600">
+                      {sortState.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
               </th>
             </tr>
           </thead>

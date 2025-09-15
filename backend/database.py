@@ -1,7 +1,7 @@
 import os
 import asyncio
 from typing import Optional, List, Dict, Any
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -86,7 +86,7 @@ class Database:
         
         result = await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: self.supabase.table("articles").insert(article_data).execute()
+            lambda: self.supabase.table("articles").insert(article_data).on_conflict("link").execute()
         )
         return result.data[0]['id']
     
@@ -135,11 +135,7 @@ class Database:
             #None,
             #lambda: self.supabase.table("latest_coin_data").select("*").not_("price_usd", "is", None).order("sentiment_score", desc=True).order("market_cap", desc=True).execute()
         #)
-        print("Getting latest coin data")
         query = self.supabase.table("latest_coin_data").select("*").order("sentiment_score", desc=True).order("market_cap", desc=True)
-        print("Query type:", type(query))
-        print("Has execute:", hasattr(query, "execute"))
-        print("Execute attr:", query.execute)
         result = query.execute()
         
         # Process the results to handle null sentiment scores properly

@@ -27,45 +27,18 @@ function App() {
     loadCoins();
   }, []);
 
-  const handleRefresh = () => {
-    setLoading(true);
-    setError(null);
-    
-    fetchCoins()
-      .then((data) => {
-        setCoins(data);
-        setLastUpdated(new Date().toLocaleString());
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
 
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Crypto Sentiment Tracker
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Real-time cryptocurrency sentiment analysis based on news sources
-              </p>
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              {loading ? 'Refreshing...' : 'Refresh Data'}
-            </button>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            24 Hour Crypto Sentiment Tracker
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Real-time cryptocurrency sentiment analysis based on news sources
+          </p>
           {lastUpdated && (
             <p className="text-sm text-gray-500 mt-2">
               Last updated: {lastUpdated}

@@ -1,17 +1,36 @@
 import feedparser
 import requests
 from typing import List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import time
 
 class RSSParser:
     def __init__(self):
         self.feeds = [
-            "https://www.coindesk.com/arc/outboundfeeds/rss/",
-            "https://cointelegraph.com/rss",
-            "https://decrypt.co/feed",
-            "https://www.newsbtc.com/feed/",
-            "https://bitcoinmagazine.com/.rss/full/"
+            "https://www.coindesk.com/arc/outboundfeeds/rss/"
+            #"https://cointelegraph.com/rss",
+            #"https://decrypt.co/feed",
+            #"https://www.newsbtc.com/feed/",
+            #"https://bitcoinmagazine.com/.rss/full/",
+            #"https://cryptoslate.com/feed/",
+            #"https://www.cryptonews.com/news/feed/",
+            #"https://blockchain.news/feed",
+            #"https://www.ccn.com/news/crypto-news/feeds/",
+            #"https://www.ccn.com/analysis/crypto-analysis/feeds/",
+            #"https://coinjournal.net/feeds/",
+            #"https://thedefiant.io/feed/",
+            #"https://cryptopotato.com/feed/",
+            #"https://livebitcoinnews.com/feed/",
+            #"https://cryptoninjas.net/feed/",
+            #"https://ambcrypto.com/feed/",
+            #"https://u.today/rss",
+            #"https://www.investing.com/rss/news_25.rss",
+            #"https://bitcoinist.com/feed/",
+            #"https://cryptobriefing.com/feed/",
+            #"https://beincrypto.com/feed/",
+            #"https://cryptonewsflash.com/feed/",
+            #"https://finbold.com/feed/",
+            #"https://blockonomi.com/feed/",
         ]
         
     def parse_feed(self, feed_url: str) -> List[Dict[str, Any]]:
@@ -32,8 +51,12 @@ class RSSParser:
                     elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
                         published_date = datetime(*entry.updated_parsed[:6], tzinfo=timezone.utc)
                     else:
-                        published_date = datetime.now(timezone.utc)
+                        published_date = datetime.now(datetime.timezone.utc)
                     
+                    # last 7 days
+                    if published_date < datetime.now(timezone.utc) - timedelta(days=7):
+                        continue
+
                     article = {
                         "title": getattr(entry, 'title', ''),
                         "summary": getattr(entry, 'summary', '') or getattr(entry, 'description', ''),
@@ -52,6 +75,7 @@ class RSSParser:
             return articles
             
         except Exception as e:
+            print(traceback.format_exc())
             print(f"Error parsing feed {feed_url}: {e}")
             return []
     

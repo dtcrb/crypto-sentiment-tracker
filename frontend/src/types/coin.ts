@@ -10,7 +10,13 @@ export interface Coin {
   no_mentions: boolean;
 }
 
-export type SortOption = 'sentiment' | 'market_cap';
+export type SortColumn = 'sentiment' | 'market_cap' | 'mentions' | 'price' | 'name';
+export type SortDirection = 'asc' | 'desc';
+
+export interface SortState {
+  column: SortColumn;
+  direction: SortDirection;
+}
 
 export interface ApiResponse {
   coins: Coin[];
