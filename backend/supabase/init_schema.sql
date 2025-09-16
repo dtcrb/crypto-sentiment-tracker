@@ -24,7 +24,7 @@ CREATE TABLE articles (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     summary TEXT,
-    link TEXT,
+    link TEXT UNIQUE,
     published_date TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
