@@ -84,9 +84,11 @@ class Database:
             "published_date": published_date.isoformat()
         }
         
+        # Use upsert with on_conflict to handle duplicate links
+        # In Supabase, this will insert if link doesn't exist, or return existing row if it does
         result = await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: self.supabase.table("articles").insert(article_data).execute()
+            lambda: self.supabase.table("articles").insert(article_data).on_conflict("link").execute()
         )
         return result.data[0]['id']
     

@@ -1,3 +1,8 @@
+// Mock the env module before importing api
+jest.mock('./env', () => ({
+  API_BASE_URL: 'http://localhost:8000',
+}));
+
 import { fetchCoins, fetchCoinDetails, fetchCoinArticles } from './api';
 import type { Coin } from '../types/coin';
 
