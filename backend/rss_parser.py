@@ -3,6 +3,8 @@ import requests
 from typing import List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import time
+import csv
+import os
 
 class RSSParser:
     def __init__(self):
@@ -32,6 +34,7 @@ class RSSParser:
             "https://finbold.com/feed/",
             "https://blockonomi.com/feed/",
         ]
+        self.max_feeds = len(self.feeds)
         
     def parse_feed(self, feed_url: str) -> List[Dict[str, Any]]:
         """Parse a single RSS feed and return articles"""
@@ -79,11 +82,15 @@ class RSSParser:
             print(f"Error parsing feed {feed_url}: {e}")
             return []
     
-    def parse_all_feeds(self) -> List[Dict[str, Any]]:
+    def parse_all_feeds(self, max_feeds: int = None) -> List[Dict[str, Any]]:
         """Parse all RSS feeds and return combined articles"""
         all_articles = []
-        
-        for feed_url in self.feeds:
+        feeds = self.feeds
+        if max_feeds:
+            feeds = self.feeds[:max_feeds]
+            print(f"Processing only first {max_feeds} feeds for testing")
+
+        for feed_url in feeds:
             articles = self.parse_feed(feed_url)
             all_articles.extend(articles)
             time.sleep(1)  # Be respectful to RSS feeds

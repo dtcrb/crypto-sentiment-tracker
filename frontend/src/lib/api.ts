@@ -45,3 +45,33 @@ export async function fetchCoinDetails(coinId: number) {
     throw new Error('Failed to fetch coin details');
   }
 }
+
+export interface ArticleSummary {
+  id: number;
+  title: string;
+  summary?: string | null;
+  link?: string | null;
+  published_date: string;
+}
+
+export async function fetchCoinArticles(coinId: number, limit = 10): Promise<ArticleSummary[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/coins/${coinId}/articles?limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching coin articles:', error);
+    throw new Error('Failed to fetch coin articles');
+  }
+}

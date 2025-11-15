@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { fetchCoinArticles, type ArticleSummary } from '../lib/api';
 import { Coin, SortColumn, SortState } from '../types/coin';
 
 interface CoinTableProps {
@@ -11,6 +12,22 @@ export default function CoinTable({ coins, loading = false }: CoinTableProps) {
     column: 'sentiment',
     direction: 'desc'
   });
+
+  const [openCoinId, setOpenCoinId] = useState<number | null>(null);
+  const [articlesByCoin, setArticlesByCoin] = useState<Record<number, { loading: boolean; error?: string; items: ArticleSummary[] }>>({});
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!openCoinId) return;
+      const target = event.target as Node | null;
+      if (containerRef.current && target && !containerRef.current.contains(target)) {
+        setOpenCoinId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openCoinId]);
 
   const getSentimentColor = (sentimentScore: number | null, noMentions: boolean) => {
     if (noMentions || sentimentScore === null) {
@@ -135,6 +152,24 @@ export default function CoinTable({ coins, loading = false }: CoinTableProps) {
     return 0;
   });
 
+  const toggleArticles = async (coinId: number) => {
+    if (openCoinId === coinId) {
+      setOpenCoinId(null);
+      return;
+    }
+    setOpenCoinId(coinId);
+    // fetch if not loaded yet
+    if (!articlesByCoin[coinId]) {
+      setArticlesByCoin(prev => ({ ...prev, [coinId]: { loading: true, items: [] } }));
+      try {
+        const items = await fetchCoinArticles(coinId, 10);
+        setArticlesByCoin(prev => ({ ...prev, [coinId]: { loading: false, items } }));
+      } catch (e) {
+        setArticlesByCoin(prev => ({ ...prev, [coinId]: { loading: false, items: [], error: 'Failed to load articles' } }));
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -145,7 +180,7 @@ export default function CoinTable({ coins, loading = false }: CoinTableProps) {
   }
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+    <div className="bg-white shadow-lg rounded-lg overflow-hidden" ref={containerRef}>
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -221,37 +256,83 @@ export default function CoinTable({ coins, loading = false }: CoinTableProps) {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedCoins.map((coin) => (
-              <tr 
-                key={coin.coin_id} 
-                className={`hover:bg-gray-50 transition-colors ${getSentimentBgColor(coin.sentiment_score, coin.no_mentions)}`}
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {coin.name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {coin.symbol}
+              <>
+                <tr 
+                  key={coin.coin_id} 
+                  className={`hover:bg-gray-50 transition-colors ${getSentimentBgColor(coin.sentiment_score, coin.no_mentions)}`}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {coin.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {coin.symbol}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`text-sm font-semibold ${getSentimentColor(coin.sentiment_score, coin.no_mentions)}`}>
-                    {formatSentimentScore(coin.sentiment_score, coin.no_mentions)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {coin.mentions_count}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatMarketCap(coin.market_cap)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatPrice(coin.price_usd)}
-                </td>
-              </tr>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`text-sm font-semibold ${getSentimentColor(coin.sentiment_score, coin.no_mentions)}`}>
+                      {formatSentimentScore(coin.sentiment_score, coin.no_mentions)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <button
+                      type="button"
+                      className="text-blue-600 hover:underline inline-flex items-center"
+                      onClick={() => toggleArticles(coin.coin_id)}
+                      aria-expanded={openCoinId === coin.coin_id}
+                      aria-controls={`coin-articles-${coin.coin_id}`}
+                    >
+                      <span className="mr-1">{coin.mentions_count}</span>
+                      <span>{openCoinId === coin.coin_id ? '▴' : '▾'}</span>
+                    </button>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatMarketCap(coin.market_cap)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatPrice(coin.price_usd)}
+                  </td>
+                </tr>
+                {openCoinId === coin.coin_id && (
+                  <tr key={`details-${coin.coin_id}`} className="bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-700" colSpan={5} id={`coin-articles-${coin.coin_id}`}>
+                      {articlesByCoin[coin.coin_id]?.loading && (
+                        <div className="flex items-center text-gray-600">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                          Loading recent articles...
+                        </div>
+                      )}
+                      {!articlesByCoin[coin.coin_id]?.loading && articlesByCoin[coin.coin_id]?.error && (
+                        <div className="text-red-600">{articlesByCoin[coin.coin_id]?.error}</div>
+                      )}
+                      {!articlesByCoin[coin.coin_id]?.loading && !articlesByCoin[coin.coin_id]?.error && (
+                        <ul className="list-disc pl-6 space-y-2">
+                          {articlesByCoin[coin.coin_id]?.items.length ? (
+                            articlesByCoin[coin.coin_id]?.items.map((a) => (
+                              <li key={a.id}>
+                                <a
+                                  href={a.link || '#'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {a.title}
+                                </a>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="list-none text-gray-600">No recent articles found.</li>
+                          )}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </>
             ))}
           </tbody>
         </table>

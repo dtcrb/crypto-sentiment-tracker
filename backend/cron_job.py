@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 from datetime import date, datetime
 from database import Database
 from coingecko_client import CoinGeckoClient
@@ -50,9 +51,9 @@ async def upsert_coins_and_prices(db: Database, coins_data, today: date):
     return coin_ids_map
 
 
-def fetch_rss_articles(rss_parser: RSSParser):
+def fetch_rss_articles(rss_parser: RSSParser, max_feeds: int = None):
     print("Fetching RSS feeds...")
-    articles = rss_parser.parse_all_feeds()
+    articles = rss_parser.parse_all_feeds(max_feeds)
     if not articles:
         print("No articles found from RSS feeds")
         return []
@@ -106,7 +107,7 @@ def print_summary(articles, sentiment_data, coins_data):
     print(f"- Updated data for {len(coins_data)} coins")
 
 
-async def run_daily_update():
+async def run_daily_update(max_feeds: int = None):
     """Main function that runs the daily data collection and analysis"""
     print(f"Starting daily update at {datetime.now()}")
 
@@ -124,22 +125,17 @@ async def run_daily_update():
         if not coins_data:
             return
 
-        # Step 2: Insert/update coins and their prices
-        coin_ids_map = await upsert_coins_and_prices(db, coins_data, today)
-
-        # Step 3: Fetch and parse RSS feeds
-        articles = fetch_rss_articles(rss_parser)
+        articles = fetch_rss_articles(rss_parser, max_feeds)
         if not articles:
             return
+
+        coin_ids_map = await upsert_coins_and_prices(db, coins_data, today)
         
-        # Step 4: Store articles in database
         await store_articles(db, articles)
 
-        # Step 5: Analyze sentiment
         coins_list = list(coin_ids_map.values())
         sentiment_data = analyze_sentiment(sentiment_analyzer, articles, coins_list, today)
 
-        # Step 6: Store sentiment data
         await store_sentiment_data(db, sentiment_data, today)
 
         print(f"Daily update completed successfully at {datetime.now()}")
@@ -151,6 +147,9 @@ async def run_daily_update():
         print(f"Error during daily update: {e}")
         raise
 
-
 if __name__ == "__main__":
-    asyncio.run(run_daily_update())
+    # if run with --test, process only 1 feed
+    if "--test" in sys.argv:
+        asyncio.run(run_daily_update(3))
+    else:
+        asyncio.run(run_daily_update(None))

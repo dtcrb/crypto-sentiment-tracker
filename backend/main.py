@@ -18,6 +18,7 @@ origins = [
     "http://localhost:3000",  # local dev
     "http://localhost:3001",  # local dev
     "http://localhost:3002",  # local dev
+    "http://localhost:3003",  # local dev
 ]
 
 # Configure CORS
@@ -123,6 +124,25 @@ async def get_coin_details(coin_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching coin details: {str(e)}")
+
+@app.get("/api/coins/{coin_id}/articles", response_model=List[Dict[str, Any]])
+async def get_coin_articles(coin_id: int, limit: int = 10):
+    """Get the most recent N articles that mention the given coin"""
+    try:
+        articles = await db.get_recent_articles_for_coin(coin_id=coin_id, limit=limit)
+        # Ensure consistent field types
+        formatted = []
+        for a in articles:
+            formatted.append({
+                "id": a.get("id"),
+                "title": a.get("title"),
+                "summary": a.get("summary"),
+                "link": a.get("link"),
+                "published_date": a.get("published_date"),
+            })
+        return formatted
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching coin articles: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

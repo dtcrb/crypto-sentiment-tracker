@@ -86,7 +86,7 @@ class Database:
         
         result = await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: self.supabase.table("articles").insert(article_data).on_conflict("link").execute()
+            lambda: self.supabase.table("articles").insert(article_data).execute()
         )
         return result.data[0]['id']
     
@@ -157,3 +157,43 @@ class Database:
                 del row['_sort_score']
         
         return processed_data
+
+    async def get_recent_articles_for_coin(self, coin_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """Return the most recent N articles that mention the specified coin.
+
+        This implementation approximates mentions by performing a case-insensitive
+        substring search on article title and summary using the coin's name and symbol.
+        In Supabase Postgres, we can do this in a single RPC via SQL ilike filters
+        but since the python client chains filters per column equality, we fetch the
+        coin record and then perform filtering client-side for our fake client tests.
+        In production, replace with a server-side SQL view/search for performance.
+        """
+        # Fetch coin to get its name and symbol
+        coin_rows = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: self.supabase.table("coins").select("id, name, symbol").eq("id", coin_id).execute()
+        )
+        if not coin_rows.data:
+            return []
+
+        coin = coin_rows.data[0]
+        coin_name = str(coin.get("name", ""))
+        coin_symbol = str(coin.get("symbol", ""))
+
+        # Fetch recent articles ordered by published_date desc
+        articles_result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: self.supabase.table("articles").select("id, title, summary, link, published_date").order("published_date", desc=True).execute()
+        )
+
+        name_lower = coin_name.lower()
+        symbol_lower = coin_symbol.lower()
+
+        def mentions_coin(article: Dict[str, Any]) -> bool:
+            text = f"{article.get('title', '')} {article.get('summary', '')}".lower()
+            return (name_lower and name_lower in text) or (symbol_lower and symbol_lower in text)
+
+        matching = [a for a in articles_result.data if mentions_coin(a)]
+        # Sort again for safety and slice to limit
+        matching.sort(key=lambda a: a.get("published_date", ""), reverse=True)
+        return matching[: max(0, int(limit))]

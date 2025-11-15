@@ -1,0 +1,6 @@
+- delete old data during chron job
+- graph sentiment over time
+- look on public social media, e.g. reddit, google trends
+- test out codex
+- clean up / read thru database api stuff / verify tests
+- integration tests on deployment
