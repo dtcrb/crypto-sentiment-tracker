@@ -19,6 +19,8 @@ origins = [
     "http://localhost:3001",  # local dev
     "http://localhost:3002",  # local dev
     "http://localhost:3003",  # local dev
+    "https://crypto-sentiment-tracker-kappa.vercel.app",
+    "https://crypto-sentiment-tracker-lqd12y50w-david-crosbys-projects.vercel.app"
 ]
 
 # Configure CORS
